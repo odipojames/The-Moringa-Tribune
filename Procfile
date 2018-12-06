@@ -1,1 +1,1 @@
-web: gunicorn The-Moringa-Tribune.wsgi
+web: gunicorn moringatribune.wsgi
