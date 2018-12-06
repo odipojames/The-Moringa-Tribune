@@ -1,1 +1,1 @@
-web: gunicorn tribune-app.wsgi
+web: gunicorn tribune.wsgi
