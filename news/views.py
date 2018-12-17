@@ -1,7 +1,11 @@
 from django.shortcuts import render,redirect
-from django.http  import HttpResponse,Http404
+from django.http  import HttpResponse,Http404,HttpResponseRedirect,JsonResponse
 import datetime as dt
-from .models import Article
+from .models import Article,NewsLetterRecipients
+from .forms import NewsLetterForm
+from .email import send_welcome_email
+from django.contrib.auth.decorators import login_required
+from .forms import NewArticleForm, NewsLetterForm
 
 
 
@@ -9,10 +13,22 @@ from .models import Article
 def news_today(request):
     date = dt.date.today()
     news = Article.todays_news()
-    return render(request, 'all-news/today-news.html', {"date": date,"news":news})
+    form = NewsLetterForm()
+    return render(request, 'all-news/today-news.html', {"date": date, "news": news, "letterForm": form})
 
+#saves user from Ajax in db and sends Welcome email 
+def newsletter(request):
+    name = request.POST.get('your_name')
+    email = request.POST.get('email')
+
+    recipient = NewsLetterRecipients(name=name, email=email)
+    recipient.save()
+    send_welcome_email(name, email)
+    data = {'success': 'You have been successfully added to mailing list'}
+    return JsonResponse(data)
 
 # spacific article
+@login_required(login_url='/accounts/login/')
 def article(request,article_id):
     try:
         article = Article.objects.get(id = article_id)
@@ -21,25 +37,28 @@ def article(request,article_id):
     return render(request,"all-news/article.html", {"article":article})
 
 
+#views for Creating a new article
+@login_required(login_url='/accounts/login/')
+def new_article(request):
+    current_user = request.user
+    if request.method == 'POST':
+        form = NewArticleForm(request.POST, request.FILES)
+        if form.is_valid():
+            article = form.save(commit=False)
+            article.editor = current_user
+            article.save()
+        return redirect('NewsToday')
+
+    else:
+        form = NewArticleForm()
+    return render(request, 'new_article.html', {"form": form})
 
 
-# Create your views here.
-# def welcome(request):
-#     return render(request, 'welcome.html')
 
 
-# def convert_dates(dates):
-#
-#     # Function that gets the weekday number for the date.
-#     day_number = dt.date.weekday(dates)
-#
-#     days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday',"Sunday"]
-#
-#     # Returning the actual day of the week
-#     day = days[day_number]
-#     return day
 
-# View Function to present news from past days
+
+
 def past_days_news(request, past_date):
 
     # try:
